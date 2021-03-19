@@ -1,0 +1,66 @@
+import os #interacting with operating system
+import pandas as pd # data processing, CSV file I/O
+
+#Importing the Dataset
+df =pd.read_csv("C:/Users/user/googleplaystore_user_reviews.csv")
+#Now Lets set dataset which collumns we are interested
+df = pd.concat([df.Translated_Review, df.Sentiment], axis = 1)
+
+#Now we will eliminate the nan value becasue they can affect our model
+df.dropna(axis = 0, inplace = True)
+#Replace the Sentiment by Encoding, Positive=0, Negative = 1, Netural= 2
+df.Sentiment = [0 if i=="Positive" else 1 if i== "Negative" else 2 for i in df.Sentiment]
+
+#Now lets Cleaning the Text
+import re #regular expression
+import nltk #import nltk library
+from nltk.corpus import stopwords#words that donot add any meaning to a sentence
+from nltk.stem.porter import PorterStemmer#stemming is the process of reducing inflection in words to their root formslf.
+text_list = []
+for i in df.Translated_Review :
+    review = re.sub('[^a-zA-Z]', ' ', i)
+    review = review.lower()
+    review = review.split()
+    ps = PorterStemmer()
+    review = [ps.stem(word) for word in review if not word in set(stopwords.words('english'))]
+    review = ' '.join(review)
+    text_list.append(review)
+
+# Creating the Bag of Words model
+from sklearn.feature_extraction.text import CountVectorizer
+cv = CountVectorizer(max_features = 1000)
+x = cv.fit_transform(text_list).toarray()
+y = df.iloc[:, 1].values
+
+# Splitting the dataset into the Training set and Test set
+from sklearn.model_selection import train_test_split
+x_train, x_test, y_train, y_test = train_test_split(x, y, test_size = 0.20, random_state = 0)
+
+# Now Fitting Naive Bayes classifier to the Training set
+from sklearn.naive_bayes import GaussianNB
+classifier = GaussianNB()
+classifier.fit(x_train, y_train)
+
+# Predicting the Test set results
+y_pred = classifier.predict(x_test)
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm = confusion_matrix(y_test, y_pred)
+accuracy = accuracy_score(y_test, y_pred)
+print(cm)
+
+print("Accuracy of naive bayes is :" accuracy)
+
+#Now Fitting Random Forest Classifier to the Traning set
+from sklearn.ensemble import RandomForestClassifier
+classifier = RandomForestClassifier(n_estimators = 10, random_state = 0)
+classifier.fit(x_train, y_train)
+
+# Predicting the Test set results
+y_pred = classifier.predict(x_test)
+
+# Making the Confusion Matrix and find Accuracy
+from sklearn.metrics import confusion_matrix, accuracy_score
+cm = confusion_matrix(y_test, y_pred)
+accuracy = accuracy_score(y_test, y_pred)
+print(cm)
+print("Accuarcy of random forest is :" accuracy)
